@@ -1,58 +1,70 @@
 var map;
 var marks = {}
-const zoom = 15
 var centerPosition = { lat: 35.46598110000001, lng: 139.622062 };
+const zoom = 15
+var radius = 1000
+var geocoder
 
-const c = 'A'.charCodeAt(0);
-const alphabets = Array.apply(null, new Array(26)).map((v, i) => {
-    return String.fromCharCode(c + i)
-})
+const alphabets = () => {
+    const c = 'A'.charCodeAt(0);
+    const alphabets = Array.apply(null, new Array(26)).map((v, i) => {
+        return String.fromCharCode(c + i)
+    })
+    return alphabets
+}
 
-function initMap() {
+const initMap = () => {
     map = new google.maps.Map(document.getElementById("map"), {
         center: centerPosition,
         zoom: zoom,
-    });
-    addMarker(centerPosition, map);
-    addCircle(centerPosition)
+    })
+    geocoder = new google.maps.Geocoder();
+    setCenter(centerPosition)
 }
 
-function addMarker(location) {
-    new google.maps.Marker({
-        position: location,
-        label: 'X',
-        map: map,
-    });
-}
-function addCircle(location) {
-    var circleOpts = {
-        center: location,
-        map: map,
-        radius: 1000,
-        strokeColor: 'rgba(255, 0, 0, 0.5)',
-        fillColor: 'rgba(255, 0, 0, 0.1)',
-    }
-    new google.maps.Circle(circleOpts);
+const getRadius = () => {
+    var radius = document.getElementById('radius').value
+    return parseInt(radius)
 }
 
-function searchAddress() {
-    var address = document.getElementById('address').value
+const setCenter = (location) => {
+    addMarker(location, 'X');
+    addCircle(location)
+}
+
+const resetCenter = () => {
+    var address = document.getElementById('centerAddress').value
     if (!address) return
-
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ address: address }, function (results, status) {
+    geocoder.geocode({ address: address }, (results, status) => {
         if (status === google.maps.GeocoderStatus.OK) {
-            var placeId = results[0].place_id
-            marks[placeId] = results[0]
-            drawMarker()
-        } else {
-            console.error('Geocode was not successful for the following reason: ' + status)
+            var place = results[0]
+            var latlng = {
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng()
+            }
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: latlng,
+                zoom: zoom,
+            })
+            setCenter(latlng)
         }
     })
 }
 
-function drawMarker() {
-    console.log(marks)
+const searchAddress = () => {
+    var address = document.getElementById('address').value
+    if (!address) return
+    geocoder.geocode({ address: address }, (results, status) => {
+        if (status === google.maps.GeocoderStatus.OK) {
+            var place = results[0]
+            var placeId = place.place_id
+            marks[placeId] = place
+            addMarkers()
+        }
+    })
+}
+
+const addMarkers = () => {
     var index = 0
     for (id in marks) {
         var place = marks[id]
@@ -60,14 +72,33 @@ function drawMarker() {
             lat: place.geometry.location.lat(),
             lng: place.geometry.location.lng()
         }
-        new google.maps.Marker({
-            position: latlng,
-            map: map,
-            label: alphabets[index]
-        })
+        addMarker(latlng, alphabets[index])
         index++
     }
     map.setCenter(latlng)
 }
 
-window.onload = initMap;
+const addMarker = (location, label) => {
+    new google.maps.Marker({
+        position: location,
+        label: label,
+        map: map,
+    });
+}
+
+const addCircle = (location) => {
+    radius = getRadius()
+    if (!radius) radius = 1000
+    var options = {
+        center: location,
+        map: map,
+        radius: radius,
+        strokeColor: 'rgba(255, 0, 0, 0.5)',
+        fillColor: 'rgba(255, 0, 0, 0.1)',
+    }
+    new google.maps.Circle(options);
+}
+
+window.onload = (event) => {
+    initMap()
+}
